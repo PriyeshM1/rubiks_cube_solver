@@ -7,6 +7,12 @@
 #include <ncl/gl/orientation.h>
 #include <ncl/gl/util.h>
 #include <iostream>
+#include <algorithm>
+
+ostream& operator<< (ostream& out, const vec3 v) {
+	out << v.x << ' ' << v.y << ' ' << v.z << ' ';
+	return out;
+}
 
 namespace rubiks {
 
@@ -76,10 +82,39 @@ namespace rubiks {
 	public:
 		DoubleFaceMove(const Face& f,  const float ra, const string n) :FaceMove(f, ra, n) {}
 
-		virtual void applyTo(RubiksCube& cube) override {}
+		virtual void applyTo(RubiksCube& rCube) override {
+			mat4 m = rotate(mat4(1), radians(rotation.amout), rotation.axis);
+			mat3 nm = mat3(m);
+
+			auto transform = [&](Cube& c) {
+				c.pos = round(m * vec4(c.pos, 1.0)).xyz;
+				c.fx = round(nm * c.fx);
+				c.fy = round(nm * c.fy);
+				c.fz = round(nm * c.fz);
+			};
+
+			vector<Cube*> cubes = rCube.find([&](Cube& c) { return face.contains(c); });
+			vector<Cube*> neighbours(cubes.size());
+			std::transform(cubes.begin(), cubes.end(), neighbours.begin(), [&](Cube* c) {
+				const vec3 pos = c->pos - face.direction;
+				return rCube.cubeAt(pos);
+			});
+
+			for (int i = 0; i < cubes.size(); i++) {
+				transform(*cubes[i]);
+				transform(*neighbours[i]);
+			}
+		}
 
 		virtual bool affects(Cube& cube) const override {
-			return false;
+			if (face.contains(cube)) {
+				return true;
+			}
+			else {
+				vec3 pos = cube.pos + face.direction;
+				auto& neighbour = *cube.parent->cubeAt(pos);
+				return face.contains(neighbour);
+			}
 		}
 
 	};

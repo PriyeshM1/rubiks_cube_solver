@@ -13,13 +13,14 @@ const int NUM_FACES = 6;
 namespace rubiks {
 
 	struct Face;
+	class RubiksCube;
 
-	using Type = unsigned;
+	enum Type { CORNER, EDGE, CENTER };
 
-	//enum Type { CORNER, EDGE, CENTER };
-	const unsigned CORNER = 0;
-	const unsigned EDGE = 1;
-	const unsigned CENTER = 2;
+	const int LAYER_ONE = -1;
+	const int LAYER_TWO = 0;
+	const int LAYER_THREE = 1;
+
 	const vec3 FRONT = { 0, 0, 1 };
 	const vec3 BACK = { 0, 0, -1 };
 	const vec3 RIGHT = { 1, 0, 0 };
@@ -39,6 +40,7 @@ namespace rubiks {
 		vec3 fx, fy, fz;
 		vec3 xc, yc, zc;
 		Type type;
+		RubiksCube* parent;
 
 		void apply(const mat3 r) {
 			pos = r * pos;
@@ -59,9 +61,9 @@ namespace rubiks {
 		Cube cubes[NUM_CUBES];
 
 		RubiksCube() {
-			cubes[0] = { {-1, 1, 1}, { -1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }, BLUE, YELLOW, RED, CORNER };
-			cubes[1] = { {0, 1, 1}, vec3(0), { 0, 1, 0 }, { 0, 0, 1 }, { 0, 0, 0 }, YELLOW, RED, EDGE };
-			cubes[2] = { { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1, 0 },{ 0, 0, 1 },GREEN,YELLOW, RED, CORNER };
+			cubes[0] = { {-1, 1, 1}, { -1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }, BLUE, YELLOW, RED, CORNER, this };
+			cubes[1] = { {0, 1, 1}, vec3(0), { 0, 1, 0 }, { 0, 0, 1 }, { 0, 0, 0 }, YELLOW, RED, EDGE, this };
+			cubes[2] = { { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1, 0 },{ 0, 0, 1 },GREEN,YELLOW, RED, CORNER, this };
 
 			cubes[3] = { { -1, 0, 1 }, vec3(0),{ -1, 0, 0 },{ 0, 0, 1 },vec3(0), BLUE, RED, EDGE };
 			cubes[4] = { vec3(0, 0, 1), vec3(0), vec3(0), {0, 0, 1}, vec3(0), vec3(0), RED, CENTER };
@@ -93,11 +95,13 @@ namespace rubiks {
 			cubes[24] = { { -1, -1, -1 },{ -1, 0, 0 },{ 0, -1, 0 },{ 0, 0, -1 }, BLUE,  WHITE, ORANGE, CORNER };
 			cubes[25] = { { 0, -1, -1 }, vec3(0),{ 0, -1, 0 },{ 0, 0, -1 },{ 0, 0, 0 }, WHITE, ORANGE, EDGE };
 			cubes[26] = { { 1, -1, -1 },{ 1, 0, 0 },{ 0, -1, 0 },{ 0, 0, -1 }, GREEN , WHITE, ORANGE, CORNER };
+			for (Cube& c : cubes) c.parent = this;
 		}
 
 		RubiksCube(const RubiksCube& original) {
 			for (int i = 0; i < NUM_CUBES; i++) {
 				cubes[i] = original.cubes[i];
+				cubes[i].parent = this;
 			}
 		}
 
@@ -111,8 +115,28 @@ namespace rubiks {
 			return res;
 		}
 
-		vector<Cube*> edgesAround(const Cube& cube);
+		vector<Cube*> edgesAround(const Cube& center);
 
+		vector<Cube*> edgesOf(const vec3 color) {
+			return find([&](Cube& c) { return c.type == EDGE && (c.yc == color || c.zc == color); });
+		}
+
+		vector<Cube*> cornersOf(const vec3 color) {
+			return find([&](Cube& c) { return c.type == CORNER && (c.yc == color || c.zc == color); });
+		}
+
+		const Cube& center(const vec3 color) {
+			return *find([&](Cube& c) { return c.type == CENTER && c.zc == color; }).front();
+		}
+
+		 Cube* cubeAt(const vec3 pos) {
+			vector<Cube*> res = find([&](Cube& c) { return c.pos == pos; });
+			return res.empty() ? nullptr : res.front();
+		}
+
+		 vector<Cube*> getLayer(int id) {
+			 return find([&](Cube c) { return c.pos.y == id; });
+		 }
 	};
 
 	struct Face {
@@ -144,8 +168,38 @@ namespace rubiks {
 			return res;
 		}
 
+		vector<Cube*> get(vector<Cube*> cubes) const {
+			vector<Cube*> res;
+			for (int i = 0; i < cubes.size(); i++) {
+				Cube* cube = cubes[i];
+				if (contains(*cube)) {
+					res.push_back(cube);
+				}
+			}
+			return res;
+		}
+
 		bool isIn(const vec3& dir) const {
 			return direction == dir;
+		}
+
+		bool layerIs(const vec3& color, RubiksCube& cube, int id) const {
+			vector<Cube*> layer = cube.getLayer(id);
+			for (int i = 0; i < layer.size(); i++) {
+				if (layer[i]->colorFor(*this) != color) return false;
+			}
+			return true;
+		}
+
+		bool is(const vec3& color, RubiksCube& cube) const {
+			for (int i = 0; i < NUM_CUBES; i++) {
+				if (cube.cubes[i].colorFor(*this) != color) return true;
+			}
+			return false;
+		}
+
+		Cube& center(RubiksCube& cube) const {
+			return *cube.find([&](Cube& c) { return c.type == CENTER && this->isIn(c.fz); }).front();
 		}
 	};
 
@@ -275,10 +329,5 @@ namespace rubiks {
 				return false;
 			}
 		}
-	};
-
-	struct EdgeColor {
-		Cube* cube;
-		vec3 color;
 	};
 }

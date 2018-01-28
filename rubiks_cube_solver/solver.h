@@ -38,6 +38,20 @@ namespace rubiks {
 		const static int BOTTOM = 1;
 		const static int SIDES = 0;
 
+		bool whiteCrossFormed(RubiksCube& cube) {
+			const Cube& center = cube.center(WHITE);
+			auto edges = cube.edgesAround(center);
+			return all_of(edges.begin(), edges.end(), [&](Cube* c) { return c->colorFor(*faceFor(center.fz)) == WHITE; });
+		}
+
+		bool layerOneSolved(RubiksCube& cube) {
+			return DOWN_FACE.is(WHITE, cube)
+				&& FRONT_FACE.layerIs(RED, cube, LAYER_ONE)
+				&& RIGHT_FACE.layerIs(GREEN, cube, LAYER_ONE)
+				&& BACK_FACE.layerIs(ORANGE, cube, LAYER_ONE)
+				&& LEFT_FACE.layerIs(BLUE, cube, LAYER_ONE);
+		}
+
 		Step daisy = [&](RubiksCube& cube, queue<Move*>& moves) {
 
 #ifdef DEBUG
@@ -45,12 +59,13 @@ namespace rubiks {
 #endif
 			
 			auto daisyFormed = [&]() {
-				auto& yellowCenter = *cube.find([&](Cube& c) { return c.type == CENTER && c.zc == YELLOW; })[0];
+				auto& yellowCenter = cube.center(YELLOW);
 				auto edges = cube.edgesAround(yellowCenter);
 				return all_of(edges.begin(), edges.end(), [&](Cube* c) { return c->colorFor(*faceFor(yellowCenter.fz)) == WHITE; });
 			};
 
-			if (daisyFormed()) return true;
+			// also check if white cross formed and exit early
+			if (whiteCrossFormed(cube) || daisyFormed()) return true;
 
 			vector<Cube*> edges = cube.find([](Cube& c) {
 				return (c.yc == WHITE || c.zc == WHITE) && c.type == EDGE && faceFor(c.directionOf(WHITE)) != &UP_FACE;
@@ -60,8 +75,6 @@ namespace rubiks {
 		//	for_each(edges.begin(), edges.end(), [&](Cube* c) { heap.push(c); });
 			auto edgesCopy = edges;
 		//	sort(edges.begin(), edges.end(), compareBy(WHITE));
-
-			// TODO check if daisy formed already and exit early
 
 			for (int i = 0; i < edges.size(); i++){
  				Cube& edge = *edges[i];
@@ -160,16 +173,65 @@ namespace rubiks {
 			return true;
 		};;
 
-		Step whiteCross = [](RubiksCube& cube, queue<Move*>& moves) {
+		Step whiteCross = [&](RubiksCube& cube, queue<Move*>& moves) {
 
-			auto isWhite = [](Cube* c) { return c->yc == WHITE; };
+#ifdef DEBUG
+			auto original = cube;
+#endif
 
-			auto crossFormed = [&]() { return false; };
+			if (whiteCrossFormed(cube)) {
+				return true;
+			}
 
-			auto axis = [&](Cube& edge) {
-				if (edge.fy == DOWN_FACE.direction) return abs(edge.fy);
-				else return abs(edge.fz);
-			};
+			vector<Cube*> edges = cube.edgesOf(WHITE);
+			// TODO prioritise based on eges that are already in position
+			for (int i = 0; i < edges.size(); i++) {
+				Cube& edge = *edges[i];
+				auto dir = [&]() { return edge.directionOf(WHITE); };
+				auto altDir = [&]() { return edge.fz == dir() ? edge.fy : edge.fz; };
+				auto altColor = [&]() { return edge.colorFor(*faceFor(altDir())); };
+				auto inPosition = [&](const Cube& edge) {};
+
+				while (faceFor(altDir()) != &FRONT_FACE) {
+					SPIN_RIGHT.applyTo(cube);
+					moves.push(&SPIN_RIGHT);
+				}
+
+				// rotate until center matches alt color
+				while (FRONT_FACE.center(cube).zc != altColor()) {
+					auto& center = FRONT_FACE.center(cube);
+					auto& _altColor = altColor();
+					d.applyTo(cube);
+					moves.push(&d);
+				}
+
+				F.applyTo(cube);
+				F.applyTo(cube);
+				moves.push(&F);
+				moves.push(&F);
+			}
+
+#ifdef DEBUG
+			if (!whiteCrossFormed(cube)) {
+				save(original);
+				throw "white cross did not formed";
+			}
+#endif
+			return true;
+		};
+
+		Step whiteCorners = [&](RubiksCube& cube, queue<Move*>& moves) {
+
+#ifdef DEBUG
+			auto original = cube;
+#endif
+
+#ifdef DEBUG
+			if (!whiteCrossFormed(cube)) {
+				save(original);
+				throw "white cross did not formed";
+			}
+#endif
 
 			return true;
 		};

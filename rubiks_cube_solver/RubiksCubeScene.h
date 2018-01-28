@@ -32,6 +32,7 @@ public:
 		//moves.push(&L);
 		//moves.push(&U);
 
+
 		moves.push(&R);
 		moves.push(&_U);
 		moves.push(&_L);
@@ -73,7 +74,7 @@ public:
 			mat4 model;
 			s.sendUniformLight("light[0]", light[0]);
 			for (int i = 0; i < NUM_CUBES; i++) {
-				auto cube = rubiksCube.cubes[i];
+				auto cube = rubiksCube.cubes[i]; 
 				if (move != nullptr && move->affects(cube)) {
 					model = rotate(mat4(1), radians(angle), move->rotation.axis);
 					mat4& base = translate(model, rubiksCube.cubes[i].pos);
