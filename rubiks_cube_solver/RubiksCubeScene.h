@@ -188,7 +188,7 @@ public:
 	virtual void processInput(const Key& key) override {
 		using namespace rubiks;
 		queue<Move*> scram;
-		if (key.status == Key::RELEASED & move == nullptr) {
+		if (key.status == Key::RELEASED && move == nullptr) {
 			switch (key.value()) {
 			case 'r':
 				moves.push(&R);

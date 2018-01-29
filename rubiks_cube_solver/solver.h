@@ -41,15 +41,7 @@ namespace rubiks {
 		bool whiteCrossFormed(RubiksCube& cube) {
 			const Cube& center = cube.center(WHITE);
 			auto edges = cube.edgesAround(center);
-			return all_of(edges.begin(), edges.end(), [&](Cube* c) { return c->colorFor(*faceFor(center.fz)) == WHITE; });
-		}
-
-		bool layerOneSolved(RubiksCube& cube) {
-			return DOWN_FACE.is(WHITE, cube)
-				&& FRONT_FACE.layerIs(RED, cube, LAYER_ONE)
-				&& RIGHT_FACE.layerIs(GREEN, cube, LAYER_ONE)
-				&& BACK_FACE.layerIs(ORANGE, cube, LAYER_ONE)
-				&& LEFT_FACE.layerIs(BLUE, cube, LAYER_ONE);
+			return all_of(edges.begin(), edges.end(), [&](Cube& c) { return c.colorFor(*faceFor(center.fz)) == WHITE; });
 		}
 
 		Step daisy = [&](RubiksCube& cube, queue<Move*>& moves) {
@@ -61,23 +53,23 @@ namespace rubiks {
 			auto daisyFormed = [&]() {
 				auto& yellowCenter = cube.center(YELLOW);
 				auto edges = cube.edgesAround(yellowCenter);
-				return all_of(edges.begin(), edges.end(), [&](Cube* c) { return c->colorFor(*faceFor(yellowCenter.fz)) == WHITE; });
+				return all_of(edges.begin(), edges.end(), [&](Cube& c) { return c.colorFor(*faceFor(yellowCenter.fz)) == WHITE; });
 			};
 
 			// also check if white cross formed and exit early
-			if (whiteCrossFormed(cube) || daisyFormed()) return true;
+			if (cube.isSolved() || whiteCrossFormed(cube) || daisyFormed()) return true;
 
-			vector<Cube*> edges = cube.find([](Cube& c) {
+			auto edges = cube.find([](Cube& c) {
 				return (c.yc == WHITE || c.zc == WHITE) && c.type == EDGE && faceFor(c.directionOf(WHITE)) != &UP_FACE;
 			});
-		//	priority_queue<Cube*, vector<Cube*>, CompareWhiteEdges> heap;
+		//	priority_queue<Cube*, vector<Cube&>, CompareWhiteEdges> heap;
 
 		//	for_each(edges.begin(), edges.end(), [&](Cube* c) { heap.push(c); });
 			auto edgesCopy = edges;
 		//	sort(edges.begin(), edges.end(), compareBy(WHITE));
 
 			for (int i = 0; i < edges.size(); i++){
- 				Cube& edge = *edges[i];
+ 				Cube& edge = edges[i];
 				
 				auto dir = [&]() { return edge.directionOf(WHITE); };
 				auto altDir = [&]() { return edge.fz == dir() ? edge.fy : edge.fz; };	// direction of other edge color
@@ -91,7 +83,7 @@ namespace rubiks {
 					loc = vec3(1, -1, 1) * edge.pos;
 
 					do {
-						Cube& currentOccupant = *cube.find([&](Cube& c) { return c.type == EDGE && c.pos == loc; })[0];
+						Cube& currentOccupant = cube.find([&](Cube& c) { return c.type == EDGE && c.pos == loc; })[0];
 						if (currentOccupant.colorFor(UP_FACE) == WHITE) {
 							U.applyTo(cube);	// create space by rotating the top face
 							moves.push(&U);
@@ -127,8 +119,8 @@ namespace rubiks {
 					}
 					if (abs(altDir()) == UP_FACE.direction) {
 						auto topFrontEdgeIsWhite = [&]() { 
-							auto c = *cube.find([&](Cube& c) { return c.type == EDGE && c.pos == vec3{0, 1, 1}; })[0];
-							return c.colorFor(UP_FACE) == WHITE;
+							auto c = cube.find([&](Cube& c) { return c.type == EDGE && c.pos == vec3{0, 1, 1}; })[0];
+							return c.get().colorFor(UP_FACE) == WHITE;
 						};
 						while (topFrontEdgeIsWhite()) {
 							U.applyTo(cube);
@@ -140,7 +132,7 @@ namespace rubiks {
 
 					loc = round(static_cast<mat4>(SPIN_UP) * vec4(edge.pos, 1)).xyz;
 					do {
-						Cube& currentOccupant = *cube.find([&](Cube& c) { return c.type == EDGE && c.pos == loc; })[0];
+						Cube& currentOccupant = cube.find([&](Cube& c) { return c.type == EDGE && c.pos == loc; })[0];
 						if (currentOccupant.colorFor(UP_FACE) == WHITE) {
 							U.applyTo(cube);	// create space by rotating the top face
 							moves.push(&U);
@@ -179,14 +171,14 @@ namespace rubiks {
 			auto original = cube;
 #endif
 
-			if (whiteCrossFormed(cube)) {
+			if (cube.isSolved() || whiteCrossFormed(cube)) {
 				return true;
 			}
 
-			vector<Cube*> edges = cube.edgesOf(WHITE);
+			auto edges = cube.edgesOf(WHITE);
 			// TODO prioritise based on eges that are already in position
 			for (int i = 0; i < edges.size(); i++) {
-				Cube& edge = *edges[i];
+				Cube& edge = edges[i];
 				auto dir = [&]() { return edge.directionOf(WHITE); };
 				auto altDir = [&]() { return edge.fz == dir() ? edge.fy : edge.fz; };
 				auto altColor = [&]() { return edge.colorFor(*faceFor(altDir())); };
@@ -217,19 +209,28 @@ namespace rubiks {
 				throw "white cross did not formed";
 			}
 #endif
+
+		//	steps.push(whiteCorners);
+
 			return true;
 		};
 
 		Step whiteCorners = [&](RubiksCube& cube, queue<Move*>& moves) {
-
 #ifdef DEBUG
 			auto original = cube;
 #endif
+			auto cornersFormed = [&]() {
+				const Face& face =  *faceFor(cube.center(WHITE).zc);
+				return face.is(WHITE, cube);
+			};
+
+			if (cube.isSolved() || cornersFormed()) return true;
+
 
 #ifdef DEBUG
-			if (!whiteCrossFormed(cube)) {
+			if (!cornersFormed(cube)) {
 				save(original);
-				throw "white cross did not formed";
+				throw "white corners did not formed";
 			}
 #endif
 

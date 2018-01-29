@@ -93,16 +93,17 @@ namespace rubiks {
 				c.fz = round(nm * c.fz);
 			};
 
-			vector<Cube*> cubes = rCube.find([&](Cube& c) { return face.contains(c); });
-			vector<Cube*> neighbours(cubes.size());
-			std::transform(cubes.begin(), cubes.end(), neighbours.begin(), [&](Cube* c) {
-				const vec3 pos = c->pos - face.direction;
-				return rCube.cubeAt(pos);
+			auto cubes = rCube.find([&](Cube& c) { return face.contains(c); });
+			vector<reference_wrapper<Cube>> neighbours;
+			for_each(cubes.begin(), cubes.end(), [&](Cube& c) {
+				auto loc = c.pos - face.direction;
+				Cube& nCube = rCube.cubeAt(loc);
+				neighbours.push_back(nCube); 
 			});
 
 			for (int i = 0; i < cubes.size(); i++) {
-				transform(*cubes[i]);
-				transform(*neighbours[i]);
+				transform(cubes[i].get());
+				transform(neighbours[i].get());
 			}
 		}
 
@@ -112,7 +113,7 @@ namespace rubiks {
 			}
 			else {
 				vec3 pos = cube.pos + face.direction;
-				auto& neighbour = *cube.parent->cubeAt(pos);
+				auto& neighbour = cube.parent->cubeAt(pos);
 				return face.contains(neighbour);
 			}
 		}
@@ -175,7 +176,7 @@ namespace rubiks {
 	static Spin SPIN_DOWN = Spin({ { 1, 0, 0 }, 90.f }, "spin down");
 
 	static FaceMove moves[6] = { F, R, B, L, U, D };
-	static Move* allMoves[14] = { &F, &R, &B, &L, &U, &D, &_F, &_R, &_B, &_L, &_U, &_D, &SPIN_LEFT, &SPIN_RIGHT };
+	static Move* allMoves[16] = { &F, &R, &B, &L, &U, &D, &_F, &_R, &_B, &_L, &_U, &_D, &SPIN_LEFT, &SPIN_RIGHT, &SPIN_UP, &SPIN_DOWN };
 
 	Move* moveFor(vec3 direction) {
 		for (int i = 0; i < 6; i++) {
@@ -190,12 +191,12 @@ namespace rubiks {
 		queue<Move*> moves;
 		ncl::Random rgn;
 		for (int i = 0; i < amount; i++) {
-			moves.push(allMoves[rgn._int(13)]);
+			moves.push(allMoves[rgn._int(16)]);
 		}
 		return moves;
 	}
 
-	vector<Cube*> RubiksCube::edgesAround(const Cube& cube) {
+	vector<reference_wrapper<Cube>> RubiksCube::edgesAround(const Cube& cube) {
 		assert(cube.type == CENTER);
 		const Face& f = *faceFor(cube.directionOf(cube.zc));
 		return find([&](Cube& c) { return c.type == EDGE && (c.fy == f.direction || c.fz == f.direction); });

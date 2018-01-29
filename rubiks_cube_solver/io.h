@@ -18,7 +18,8 @@ namespace rubiks {
 	//	return in;
 	//}
 
-	void save(const RubiksCube& rCube) {
+	void save(RubiksCube& rCube) {
+		for_each(begin(rCube.cubes), end(rCube.cubes), [](Cube& c) { c.parent = nullptr; });
 		ofstream fout("cube.rubiks", ios::binary);
 		if (!fout) {
 			throw std::runtime_error("unable to open file cube.rubiks");
@@ -33,5 +34,6 @@ namespace rubiks {
 			throw std::runtime_error("unable to open file cube.rubiks");
 		}
 		fin.read((char*)&rCube, sizeof RubiksCube);
+		for_each(begin(rCube.cubes), end(rCube.cubes), [&](Cube& c) { c.parent = &rCube; });
 	}
 }

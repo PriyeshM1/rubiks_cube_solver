@@ -3,6 +3,9 @@
 #include <glm/glm.hpp>
 #include <functional>
 #include <vector>
+#include <iterator>
+#include <string>
+
 using namespace std;
 using namespace glm;
 
@@ -61,9 +64,9 @@ namespace rubiks {
 		Cube cubes[NUM_CUBES];
 
 		RubiksCube() {
-			cubes[0] = { {-1, 1, 1}, { -1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }, BLUE, YELLOW, RED, CORNER, this };
-			cubes[1] = { {0, 1, 1}, vec3(0), { 0, 1, 0 }, { 0, 0, 1 }, { 0, 0, 0 }, YELLOW, RED, EDGE, this };
-			cubes[2] = { { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1, 0 },{ 0, 0, 1 },GREEN,YELLOW, RED, CORNER, this };
+			cubes[0] = { {-1, 1, 1}, { -1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }, BLUE, YELLOW, RED, CORNER };
+			cubes[1] = { {0, 1, 1}, vec3(0), { 0, 1, 0 }, { 0, 0, 1 }, { 0, 0, 0 }, YELLOW, RED, EDGE };
+			cubes[2] = { { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1, 0 },{ 0, 0, 1 },GREEN,YELLOW, RED, CORNER };
 
 			cubes[3] = { { -1, 0, 1 }, vec3(0),{ -1, 0, 0 },{ 0, 0, 1 },vec3(0), BLUE, RED, EDGE };
 			cubes[4] = { vec3(0, 0, 1), vec3(0), vec3(0), {0, 0, 1}, vec3(0), vec3(0), RED, CENTER };
@@ -105,38 +108,43 @@ namespace rubiks {
 			}
 		}
 
-		vector<Cube*> find(function<bool(Cube&)> predicate) {
-			vector<Cube*> res;
+		vector<reference_wrapper<Cube>> find(function<bool(Cube&)> predicate) {
+			vector<reference_wrapper<Cube>> res;
 			for (int i = 0; i < NUM_CUBES; i++) {
 				if (predicate(cubes[i])) {
-					res.push_back(&cubes[i]);
+					res.push_back(cubes[i]);
 				}
 			}
 			return res;
 		}
 
-		vector<Cube*> edgesAround(const Cube& center);
+		vector<reference_wrapper<Cube>> edgesAround(const Cube& center);
 
-		vector<Cube*> edgesOf(const vec3 color) {
+		vector<reference_wrapper<Cube>> edgesOf(const vec3 color) {
 			return find([&](Cube& c) { return c.type == EDGE && (c.yc == color || c.zc == color); });
 		}
 
-		vector<Cube*> cornersOf(const vec3 color) {
-			return find([&](Cube& c) { return c.type == CORNER && (c.yc == color || c.zc == color); });
+		vector<reference_wrapper<Cube>> cornersOf(const vec3 color) {
+			return find([&](Cube& c) { return c.type == CORNER && (c.xc == color || c.yc == color || c.zc == color); });
 		}
 
 		const Cube& center(const vec3 color) {
-			return *find([&](Cube& c) { return c.type == CENTER && c.zc == color; }).front();
+			return find([&](Cube& c) { return c.type == CENTER && c.zc == color; }).front();
 		}
 
-		 Cube* cubeAt(const vec3 pos) {
-			vector<Cube*> res = find([&](Cube& c) { return c.pos == pos; });
-			return res.empty() ? nullptr : res.front();
+		 Cube& cubeAt(const vec3 pos) {
+			vector<reference_wrapper<Cube>> res = find([&](Cube& c) { return c.pos == pos; });
+			if (res.empty()) throw "No Cube found at pos: [" + to_string(pos.x) + ", " + to_string(pos.y) + ", " + to_string(pos.z) + "]";
+			return res.front();
 		}
 
-		 vector<Cube*> getLayer(int id) {
+		 vector<reference_wrapper<Cube>> getLayer(int id) {
 			 return find([&](Cube c) { return c.pos.y == id; });
 		 }
+
+		 bool isSolved();
+
+		 bool layerIsSolved(int id);
 	};
 
 	struct Face {
@@ -157,22 +165,22 @@ namespace rubiks {
 			return false;
 		}
 
-		vector<Cube*> get(RubiksCube& rCube) const {
-			vector<Cube*> res;
+		vector<reference_wrapper<Cube>> get(RubiksCube& rCube) const {
+			vector<reference_wrapper<Cube>> res;
 			for (int i = 0; i < NUM_CUBES; i++) {
-				Cube* cube = &rCube.cubes[i];
-				if (contains(*cube)) {
+				Cube& cube = rCube.cubes[i];
+				if (contains(cube)) {
 					res.push_back(cube);
 				}
 			}
 			return res;
 		}
 
-		vector<Cube*> get(vector<Cube*> cubes) const {
-			vector<Cube*> res;
+		vector<reference_wrapper<Cube>> get(vector<reference_wrapper<Cube>> cubes) const {
+			vector<reference_wrapper<Cube>> res;
 			for (int i = 0; i < cubes.size(); i++) {
-				Cube* cube = cubes[i];
-				if (contains(*cube)) {
+				Cube& cube = cubes[i];
+				if (contains(cube)) {
 					res.push_back(cube);
 				}
 			}
@@ -184,9 +192,9 @@ namespace rubiks {
 		}
 
 		bool layerIs(const vec3& color, RubiksCube& cube, int id) const {
-			vector<Cube*> layer = cube.getLayer(id);
+			vector<reference_wrapper<Cube>> layer = cube.getLayer(id);
 			for (int i = 0; i < layer.size(); i++) {
-				if (layer[i]->colorFor(*this) != color) return false;
+				if (layer[i].get().colorFor(*this) != color) return false;
 			}
 			return true;
 		}
@@ -199,7 +207,7 @@ namespace rubiks {
 		}
 
 		Cube& center(RubiksCube& cube) const {
-			return *cube.find([&](Cube& c) { return c.type == CENTER && this->isIn(c.fz); }).front();
+			return cube.find([&](Cube& c) { return c.type == CENTER && isIn(c.fz); }).front().get();
 		}
 	};
 
@@ -216,12 +224,16 @@ namespace rubiks {
 		return vec3(0);
 	}
 
-	const static Face RIGHT_FACE{ { 1, 0, 0 } };
-	const static Face LEFT_FACE{ { -1, 0, 0 } };
-	const static Face UP_FACE{ { 0, 1, 0 } };
-	const static Face DOWN_FACE{ { 0, -1, 0 } };
-	const static Face FRONT_FACE{ { 0, 0, 1 } };
-	const static Face BACK_FACE{ { 0, 0, -1 } };
+	const Face RIGHT_FACE{ { 1, 0, 0 } };
+	const Face LEFT_FACE{ { -1, 0, 0 } };
+	const Face UP_FACE{ { 0, 1, 0 } };
+	const Face DOWN_FACE{ { 0, -1, 0 } };
+	const Face FRONT_FACE{ { 0, 0, 1 } };
+	const Face BACK_FACE{ { 0, 0, -1 } };
+
+
+	const Face faces[6] = { UP_FACE, RIGHT_FACE, LEFT_FACE, FRONT_FACE, BACK_FACE, DOWN_FACE };
+	const Face sides[4] = { RIGHT_FACE, LEFT_FACE, FRONT_FACE, BACK_FACE };
 
 	const Face* faceFor(vec3 direction) {
 		if (RIGHT_FACE.direction == direction) {
@@ -246,15 +258,40 @@ namespace rubiks {
 		return nullptr;
 	}
 
-	function<bool(Cube*, Cube*)> compareBy(const vec3& color) {
-		return [&](Cube* a, Cube* b) {
-			if (a == b) return false;
-			vec3 aDir = a->directionOf(WHITE);
-			vec3 bDir = b->directionOf(WHITE);
+	bool RubiksCube::isSolved() {
+		return all_of(begin(faces)+1, end(faces)-1, [&](const Face& face) {
+			vector<reference_wrapper<Cube>> cs = face.get(*this);
+			vec3 color = cs.front().get().colorFor(face);
+			return all_of(cs.begin() + 1, cs.end(), [&](Cube& c) { return c.colorFor(face) == color; });
+		});
+	}
+
+	bool RubiksCube::layerIsSolved(int id) {
+		assert(id >= LAYER_ONE && id <= LAYER_THREE);
+
+		vector<reference_wrapper<Cube>> layer = getLayer(id);
+		bool sidesSolved = all_of(begin(sides), end(sides), [&](const Face& face) {
+			vector<reference_wrapper<Cube>> cs = face.get(cs);
+			vec3 color = cs.front().get().colorFor(face);
+			return all_of(cs.begin() + 1, cs.end(), [&](Cube& c) { return c.colorFor(face) == color; });
+		});
+
+		if (sidesSolved && id == LAYER_TWO) return true;
+
+		const Face face = id == LAYER_ONE ? BACK_FACE : FRONT_FACE;
+		vec3 color = face.get(layer).front().get().colorFor(face);
+		return face.is(color, *this);
+	}
+
+	function<bool(Cube&, Cube&)> compareBy(const vec3& color) {
+		return [&](Cube& a, Cube& b) {
+			if (&a == &b) return false;
+			vec3 aDir = a.directionOf(WHITE);
+			vec3 bDir = b.directionOf(WHITE);
 			if (faceFor(aDir) == faceFor(bDir)) {
 				if (faceFor(aDir) == &FRONT_FACE) {
-					vec3 _aDir = a->fz == aDir ? a->fy : a->fz;
-					vec3 _bDir = b->fz == bDir ? b->fy : b->fz;
+					vec3 _aDir = a.fz == aDir ? a.fy : a.fz;
+					vec3 _bDir = b.fz == bDir ? b.fy : b.fz;
 					if (abs(_aDir) == abs(_bDir)) return false;
 					else if (abs(_aDir) == vec3(1, 0, 0)) return true;
 				}
@@ -294,14 +331,14 @@ namespace rubiks {
 
 	class CompareWhiteEdges {
 		public:
-		bool operator()(const Cube* a, const Cube* b) const {
-			if (a == b) return false;
-			vec3 aDir = a->directionOf(WHITE);
-			vec3 bDir = b->directionOf(WHITE);
+		bool operator()(const Cube& a, const Cube& b) const {
+			if (&a == &b) return false;
+			vec3 aDir = a.directionOf(WHITE);
+			vec3 bDir = b.directionOf(WHITE);
 			if (faceFor(aDir) == faceFor(bDir)) {
 				if (faceFor(aDir) == &FRONT_FACE) {
-					vec3 _aDir = a->fz == aDir ? a->fy : a->fz;
-					vec3 _bDir = b->fz == bDir ? b->fy : b->fz;
+					vec3 _aDir = a.fz == aDir ? a.fy : a.fz;
+					vec3 _bDir = b.fz == bDir ? b.fy : b.fz;
 					if (abs(_aDir) == abs(_bDir)) return false;
 					else if (abs(_aDir) == vec3(1, 0, 0)) return true;
 				}
