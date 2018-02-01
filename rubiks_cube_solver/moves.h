@@ -1,13 +1,15 @@
 #pragma once
 #define GLM_SWIZZLE 
 #define GLM_SWIZZLE_XYZ
-#include "model.h"
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <ncl/gl/orientation.h>
-#include <ncl/gl/util.h>
 #include <iostream>
 #include <algorithm>
+#include <queue>
+#include "model.h"
+#include "util.h"
+#include <iterator>
 
 ostream& operator<< (ostream& out, const vec3 v) {
 	out << v.x << ' ' << v.y << ' ' << v.z << ' ';
@@ -21,6 +23,10 @@ namespace rubiks {
 	struct Rotation {
 		vec3 axis;
 		float amout;
+
+		operator mat4() const {
+			return rotate(mat4(1), radians(amout), axis);
+		}
 	};
 
 	class Rotatable {
@@ -97,13 +103,17 @@ namespace rubiks {
 			vector<reference_wrapper<Cube>> neighbours;
 			for_each(cubes.begin(), cubes.end(), [&](Cube& c) {
 				auto loc = c.pos - face.direction;
-				Cube& nCube = rCube.cubeAt(loc);
-				neighbours.push_back(nCube); 
+				if (dot(loc, loc) != 0) {
+					Cube& nCube = rCube.cubeAt(loc);
+					neighbours.push_back(nCube);
+				}
 			});
 
 			for (int i = 0; i < cubes.size(); i++) {
 				transform(cubes[i].get());
-				transform(neighbours[i].get());
+				if (i < cubes.size() - 1) {
+					transform(neighbours[i].get());
+				}
 			}
 		}
 
@@ -113,6 +123,7 @@ namespace rubiks {
 			}
 			else {
 				vec3 pos = cube.pos + face.direction;
+				if ((dot(pos, pos) == 0)) return false;
 				auto& neighbour = cube.parent->cubeAt(pos);
 				return face.contains(neighbour);
 			}
@@ -170,18 +181,33 @@ namespace rubiks {
 	static  DoubleFaceMove u = DoubleFaceMove(UP_FACE, -90.f, "u");
 	static  DoubleFaceMove d = DoubleFaceMove(DOWN_FACE, -90.f, "d");
 
+	static  DoubleFaceMove _f = DoubleFaceMove(FRONT_FACE, 90.f, "-f");
+	static  DoubleFaceMove _r = DoubleFaceMove(RIGHT_FACE, 90.f, "-r");
+	static  DoubleFaceMove _b = DoubleFaceMove(BACK_FACE, 90.f, "-b");
+	static  DoubleFaceMove _l = DoubleFaceMove(LEFT_FACE, 90.f, "-l");
+	static  DoubleFaceMove _u = DoubleFaceMove(UP_FACE, 90.f, "-u");
+	static  DoubleFaceMove _d = DoubleFaceMove(DOWN_FACE, 90.f, "-d");
+
 	static Spin SPIN_RIGHT = Spin({ { 0, 1, 0 }, -90.f }, "spin right");
 	static Spin SPIN_LEFT = Spin({ { 0, 1, 0 }, 90.f }, "spin left");
 	static Spin SPIN_UP = Spin({ { 1, 0, 0 }, -90.f }, "spin up");
 	static Spin SPIN_DOWN = Spin({ { 1, 0, 0 }, 90.f }, "spin down");
 
-	static FaceMove moves[6] = { F, R, B, L, U, D };
-	static Move* allMoves[16] = { &F, &R, &B, &L, &U, &D, &_F, &_R, &_B, &_L, &_U, &_D, &SPIN_LEFT, &SPIN_RIGHT, &SPIN_UP, &SPIN_DOWN };
+	static Move* RArg[4] = { &R, &U, &_R, &_U };
+	static Move* LArg[4] = { &_L, &_U, &L, &U };
+
+	
+	static Move* allMoves[22] = {
+		&F, &R, &B, &L, &U, &D, &_F, &_R, &_B, &_L, &_U, &_D, &SPIN_LEFT, &SPIN_RIGHT, &SPIN_UP, &SPIN_DOWN,
+		&f, &r, &b, &l, &u, &d
+	};
+
 
 	Move* moveFor(vec3 direction) {
 		for (int i = 0; i < 6; i++) {
-			if (direction == moves[i].face.direction) {
-				return &moves[i];
+			FaceMove* move = dynamic_cast<FaceMove*>(allMoves[i]);
+			if (move != nullptr && direction == move->face.direction) {
+				return move;
 			}
 		}
 		return nullptr;
@@ -189,17 +215,37 @@ namespace rubiks {
 
 	queue<Move*>  scramble(int amount) {
 		queue<Move*> moves;
-		ncl::Random rgn;
 		for (int i = 0; i < amount; i++) {
-			moves.push(allMoves[rgn._int(16)]);
+			moves.push(allMoves[nextInt(22)]);
 		}
 		return moves;
+	}
+
+	void scramble(RubiksCube& cube) {
+		auto moves = scramble(50);
+		do {
+			Move& m = *moves.front();
+			moves.pop();
+			m.applyTo(cube);
+		} while (!moves.empty());
+	}
+
+	bool cached(Move* move) {
+		return any_of(begin(allMoves), end(allMoves), [&](Move* m) { 
+			return move == m; 
+		});
 	}
 
 	vector<reference_wrapper<Cube>> RubiksCube::edgesAround(const Cube& cube) {
 		assert(cube.type == CENTER);
 		const Face& f = *faceFor(cube.directionOf(cube.zc));
 		return find([&](Cube& c) { return c.type == EDGE && (c.fy == f.direction || c.fz == f.direction); });
+	}
+
+	vector<reference_wrapper<Cube>> RubiksCube::cornersAround(const Cube& cube) {
+		assert(cube.type == CENTER);
+		const Face& f = *faceFor(cube.directionOf(cube.zc));
+		return find([&](Cube& c) { return c.type == CORNER && (c.fx == f.direction || c.fy == f.direction || c.fz == f.direction); });
 	}
 
 }

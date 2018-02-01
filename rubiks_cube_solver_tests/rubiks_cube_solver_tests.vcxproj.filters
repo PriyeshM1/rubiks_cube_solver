@@ -15,31 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="targetver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RubiksCubeScene.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="model.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="moves.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="solver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="io.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="util.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -47,13 +26,8 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="rubiks_cube_solver.cpp">
+    <ClCompile Include="modeltest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="model.Inl">
-      <Filter>Header Files</Filter>
-    </None>
   </ItemGroup>
 </Project>

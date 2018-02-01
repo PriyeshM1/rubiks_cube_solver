@@ -17,33 +17,12 @@ public:
 	RubiksCubeScene() : Scene("Rubik's Cube solver") {
 		_useImplictShaderLoad = true;
 		angle = 0;
+		move = nullptr;
 	}
 
 	virtual void init() override {
 		initCube();
 		using namespace rubiks;
-		//moves.push(&R);
-		//moves.push(&U);
-		//moves.push(&_R);
-		//moves.push(&_U);
-		//moves.push(&SPIN_RIGHT);
-		//moves.push(&_L);
-		//moves.push(&_U);
-		//moves.push(&L);
-		//moves.push(&U);
-
-
-		moves.push(&R);
-		moves.push(&_U);
-		moves.push(&_L);
-		moves.push(&_D);
-		moves.push(&F);
-		moves.push(&_D);
-		moves.push(&_F);
-
-	//	R.applyTo(rubiksCube);
-	//	_L.applyTo(rubiksCube);
-	//	F.applyTo(rubiksCube);
 
 		solver = new SimpleSolver;
 	//	moves = solver->solve(rubiksCube);
@@ -173,7 +152,11 @@ public:
 	}
 
 	void nextMove() {
-		if (move) move->applyTo(rubiksCube);
+		if (move) {
+			move->applyTo(rubiksCube);
+			undo.push(move); 
+			move = nullptr;
+		}
 		if (!moves.empty()) {
 			move = moves.front();
 			moves.pop();
@@ -181,7 +164,6 @@ public:
 		}
 		else {
 			scrambling = false;
-			move = nullptr;
 		}
 	}
 
@@ -235,10 +217,13 @@ public:
 				scrambling = true;
 				speed = 700;
 				break;
-			case 262:
-				moves.push(&SPIN_LEFT);
+			case 'e':
+				moves.push(&d);
 				break;
 			case 263:
+				moves.push(&SPIN_LEFT);
+				break;
+			case 262:
 				moves.push(&SPIN_RIGHT);
 				break;
 			case 264:
@@ -250,9 +235,14 @@ public:
 			case ' ':
 				moves = solver->solve(rubiksCube);
 				break;
-			case 'o':
+			case 'i':
 				load(rubiksCube);
 				break;
+			case 'o':
+				save(rubiksCube);
+				break;
+			case 'c':
+				rubiksCube.reset();
 			default:
 				break;
 			}

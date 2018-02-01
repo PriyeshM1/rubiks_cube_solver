@@ -5,12 +5,13 @@
 #include <vector>
 #include <iterator>
 #include <string>
+#include <algorithm>
+#include <initializer_list>
 
 using namespace std;
 using namespace glm;
 
-using Rotation = Orientation;
-const int NUM_CUBES = 27;
+const int NUM_CUBES = 26;
 const int NUM_FACES = 6;
 
 namespace rubiks {
@@ -56,6 +57,34 @@ namespace rubiks {
 			else if (color == yc) return fy;
 			else return fz;	 // TODO fix this
 		}
+
+		vector<vec3> colors() {	
+			switch (type)
+			{
+			case CENTER:
+				return vector<vec3>{zc};
+			case EDGE:
+				return vector<vec3>{yc, zc};
+			case CORNER:
+				return vector<vec3>{xc, yc, zc};
+			default:
+				return vector<vec3>{};
+			}
+		}
+
+		vector<vec3> faces() {
+			switch (type)
+			{
+			case CENTER:
+				return vector<vec3>{fz};
+			case EDGE:
+				return vector<vec3>{fy, fz};
+			case CORNER:
+				return vector<vec3>{fx, fy, fz};
+			default:
+				vector<vec3>{};
+			}
+		}
 	};
 
 
@@ -64,41 +93,7 @@ namespace rubiks {
 		Cube cubes[NUM_CUBES];
 
 		RubiksCube() {
-			cubes[0] = { {-1, 1, 1}, { -1, 0, 0 }, { 0, 1, 0 }, { 0, 0, 1 }, BLUE, YELLOW, RED, CORNER };
-			cubes[1] = { {0, 1, 1}, vec3(0), { 0, 1, 0 }, { 0, 0, 1 }, { 0, 0, 0 }, YELLOW, RED, EDGE };
-			cubes[2] = { { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1, 0 },{ 0, 0, 1 },GREEN,YELLOW, RED, CORNER };
-
-			cubes[3] = { { -1, 0, 1 }, vec3(0),{ -1, 0, 0 },{ 0, 0, 1 },vec3(0), BLUE, RED, EDGE };
-			cubes[4] = { vec3(0, 0, 1), vec3(0), vec3(0), {0, 0, 1}, vec3(0), vec3(0), RED, CENTER };
-			cubes[5] = { { 1, 0, 1 }, vec3(0),{ 1, 0, 0 },{ 0, 0, 1 },vec3(0),GREEN, RED, EDGE };
-
-			cubes[7] = { { -1, -1, 1 },{ -1, 0, 0 },{ 0, -1, 0 },{ 0, 0, 1 },BLUE, WHITE, RED, CORNER };
-			cubes[8] = { { 0, -1, 1 }, vec3(0),{ 0, -1, 0 },{ 0, 0, 1 },{ 0, 0, 0 }, WHITE, RED, EDGE };
-			cubes[9] = { { 1, -1, 1 },{ 1, 0, 0 },{ 0, -1, 0 },{ 0, 0, 1 },GREEN, WHITE, RED, CORNER };
-
-			cubes[10] = { { -1, 1, 0 }, vec3(0),{ -1, 0, 0 },{ 0, 1, 0 }, vec3(0),BLUE, YELLOW, EDGE };
-			cubes[11] = { {0, 1, 0}, vec3(0), vec3(0) ,{ 0, 1, 0 }, vec3(0), vec3(0) , YELLOW, CENTER };
-			cubes[12] = { { 1, 1, 0}, vec3(0), { 1, 0, 0 },{ 0, 1, 0 }, vec3(0), GREEN, YELLOW, EDGE };
-
-			cubes[13] = { { -1, 0, 0 }, vec3(0), vec3(0), { -1, 0, 0 }, vec3(0), vec3(0), BLUE, CENTER };
-			cubes[14] = { { 1, 0, 0 }, vec3(0), vec3(0), { 1, 0, 0 }, vec3(0), vec3(0), GREEN, CENTER };
-
-			cubes[15] = { { -1, -1, 0 }, vec3(0),{ -1, 0, 0 },{ 0, -1, 0 }, vec3(0),BLUE, WHITE, EDGE };
-			cubes[16] = { { 0, -1, 0 }, vec3(0), vec3(0) ,{ 0, -1, 0 }, vec3(0), vec3(0) , WHITE, CENTER };
-			cubes[17] = { { 1, -1, 0 }, vec3(0),{ 1, 0, 0 },{ 0, -1, 0 }, vec3(0),GREEN, WHITE, EDGE };
-
-			cubes[18] = { { -1, 1, -1 },{ -1, 0, 0 },{ 0, 1, 0 },{ 0, 0, -1 },BLUE, YELLOW, ORANGE, CORNER };
-			cubes[19] = { { 0, 1, -1 }, vec3(0),{ 0, 1, 0 },{ 0, 0, -1 },{ 0, 0, 0 }, YELLOW, ORANGE, EDGE };
-			cubes[20] = { { 1, 1, -1 },{ 1, 0, 0 },{ 0, 1, 0 },{ 0, 0, -1 },GREEN, YELLOW, ORANGE, CORNER };
-
-			cubes[21] = { { -1, 0, -1 }, vec3(0),{ -1, 0, 0 },{ 0, 0, -1 },vec3(0),BLUE, ORANGE, EDGE };
-			cubes[22] = { vec3(0, 0, -1), vec3(0), vec3(0),{ 0, 0, -1 }, vec3(0), vec3(0), ORANGE, CENTER };
-			cubes[23] = { { 1, 0, -1 }, vec3(0),{ 1, 0, 0 },{ 0, 0, -1 },vec3(0), GREEN, ORANGE, EDGE };
-
-			cubes[24] = { { -1, -1, -1 },{ -1, 0, 0 },{ 0, -1, 0 },{ 0, 0, -1 }, BLUE,  WHITE, ORANGE, CORNER };
-			cubes[25] = { { 0, -1, -1 }, vec3(0),{ 0, -1, 0 },{ 0, 0, -1 },{ 0, 0, 0 }, WHITE, ORANGE, EDGE };
-			cubes[26] = { { 1, -1, -1 },{ 1, 0, 0 },{ 0, -1, 0 },{ 0, 0, -1 }, GREEN , WHITE, ORANGE, CORNER };
-			for (Cube& c : cubes) c.parent = this;
+			reset();
 		}
 
 		RubiksCube(const RubiksCube& original) {
@@ -108,17 +103,57 @@ namespace rubiks {
 			}
 		}
 
+		void reset() {
+			cubes[0] = { { -1, 1, 1 },{ -1, 0, 0 },{ 0, 1, 0 },{ 0, 0, 1 }, BLUE, YELLOW, RED, CORNER };
+			cubes[1] = { { 0, 1, 1 }, vec3(0),{ 0, 1, 0 },{ 0, 0, 1 },{ 0, 0, 0 }, YELLOW, RED, EDGE };
+			cubes[2] = { { 1, 1, 1 },{ 1, 0, 0 },{ 0, 1, 0 },{ 0, 0, 1 },GREEN,YELLOW, RED, CORNER };
+
+			cubes[3] = { { -1, 0, 1 }, vec3(0),{ -1, 0, 0 },{ 0, 0, 1 },vec3(0), BLUE, RED, EDGE };
+			cubes[4] = { vec3(0, 0, 1), vec3(0), vec3(0),{ 0, 0, 1 }, vec3(0), vec3(0), RED, CENTER };
+			cubes[5] = { { 1, 0, 1 }, vec3(0),{ 1, 0, 0 },{ 0, 0, 1 },vec3(0),GREEN, RED, EDGE };
+
+			cubes[6] = { { -1, -1, 1 },{ -1, 0, 0 },{ 0, -1, 0 },{ 0, 0, 1 },BLUE, WHITE, RED, CORNER };
+			cubes[7] = { { 0, -1, 1 }, vec3(0),{ 0, -1, 0 },{ 0, 0, 1 },{ 0, 0, 0 }, WHITE, RED, EDGE };
+			cubes[8] = { { 1, -1, 1 },{ 1, 0, 0 },{ 0, -1, 0 },{ 0, 0, 1 },GREEN, WHITE, RED, CORNER };
+
+			cubes[9] = { { -1, 1, 0 }, vec3(0),{ -1, 0, 0 },{ 0, 1, 0 }, vec3(0),BLUE, YELLOW, EDGE };
+			cubes[10] = { { 0, 1, 0 }, vec3(0), vec3(0) ,{ 0, 1, 0 }, vec3(0), vec3(0) , YELLOW, CENTER };
+			cubes[11] = { { 1, 1, 0 }, vec3(0),{ 1, 0, 0 },{ 0, 1, 0 }, vec3(0), GREEN, YELLOW, EDGE };
+
+			cubes[12] = { { -1, 0, 0 }, vec3(0), vec3(0),{ -1, 0, 0 }, vec3(0), vec3(0), BLUE, CENTER };
+			cubes[13] = { { 1, 0, 0 }, vec3(0), vec3(0),{ 1, 0, 0 }, vec3(0), vec3(0), GREEN, CENTER };
+
+			cubes[14] = { { -1, -1, 0 }, vec3(0),{ -1, 0, 0 },{ 0, -1, 0 }, vec3(0),BLUE, WHITE, EDGE };
+			cubes[15] = { { 0, -1, 0 }, vec3(0), vec3(0) ,{ 0, -1, 0 }, vec3(0), vec3(0) , WHITE, CENTER };
+			cubes[16] = { { 1, -1, 0 }, vec3(0),{ 1, 0, 0 },{ 0, -1, 0 }, vec3(0),GREEN, WHITE, EDGE };
+
+			cubes[17] = { { -1, 1, -1 },{ -1, 0, 0 },{ 0, 1, 0 },{ 0, 0, -1 },BLUE, YELLOW, ORANGE, CORNER };
+			cubes[18] = { { 0, 1, -1 }, vec3(0),{ 0, 1, 0 },{ 0, 0, -1 },{ 0, 0, 0 }, YELLOW, ORANGE, EDGE };
+			cubes[19] = { { 1, 1, -1 },{ 1, 0, 0 },{ 0, 1, 0 },{ 0, 0, -1 },GREEN, YELLOW, ORANGE, CORNER };
+
+			cubes[20] = { { -1, 0, -1 }, vec3(0),{ -1, 0, 0 },{ 0, 0, -1 },vec3(0),BLUE, ORANGE, EDGE };
+			cubes[21] = { vec3(0, 0, -1), vec3(0), vec3(0),{ 0, 0, -1 }, vec3(0), vec3(0), ORANGE, CENTER };
+			cubes[22] = { { 1, 0, -1 }, vec3(0),{ 1, 0, 0 },{ 0, 0, -1 },vec3(0), GREEN, ORANGE, EDGE };
+
+			cubes[23] = { { -1, -1, -1 },{ -1, 0, 0 },{ 0, -1, 0 },{ 0, 0, -1 }, BLUE,  WHITE, ORANGE, CORNER };
+			cubes[24] = { { 0, -1, -1 }, vec3(0),{ 0, -1, 0 },{ 0, 0, -1 },{ 0, 0, 0 }, WHITE, ORANGE, EDGE };
+			cubes[25] = { { 1, -1, -1 },{ 1, 0, 0 },{ 0, -1, 0 },{ 0, 0, -1 }, GREEN , WHITE, ORANGE, CORNER };
+			for (Cube& c : cubes) c.parent = this;
+		}
+
 		vector<reference_wrapper<Cube>> find(function<bool(Cube&)> predicate) {
 			vector<reference_wrapper<Cube>> res;
-			for (int i = 0; i < NUM_CUBES; i++) {
-				if (predicate(cubes[i])) {
-					res.push_back(cubes[i]);
+			for (Cube& c : cubes) {
+				if (predicate(c)) {
+					res.push_back(c);
 				}
 			}
 			return res;
 		}
 
 		vector<reference_wrapper<Cube>> edgesAround(const Cube& center);
+
+		vector<reference_wrapper<Cube>> cornersAround(const Cube& center);
 
 		vector<reference_wrapper<Cube>> edgesOf(const vec3 color) {
 			return find([&](Cube& c) { return c.type == EDGE && (c.yc == color || c.zc == color); });
@@ -142,9 +177,23 @@ namespace rubiks {
 			 return find([&](Cube c) { return c.pos.y == id; });
 		 }
 
+		 vector<reference_wrapper<Cube>> findBy(const initializer_list<vec3> colors) {
+			 assert(colors.size() <= 3);
+			 return find([&](Cube& c) {
+				 vector<vec3> cColors = c.colors();
+				 int size = cColors.size();
+				 if (colors.size() != cColors.size()) return false;
+				 return all_of(colors.begin(), colors.end(), [&](vec3 color) {
+					 return any_of(cColors.begin(), cColors.end(), [&](vec3 oColor) {return color == oColor; });
+				 });
+			 });
+		 }
+
 		 bool isSolved();
 
 		 bool layerIsSolved(int id);
+
+		 bool isInPlace(Cube& c, bool strict = true);
 	};
 
 	struct Face {
@@ -199,11 +248,11 @@ namespace rubiks {
 			return true;
 		}
 
-		bool is(const vec3& color, RubiksCube& cube) const {
-			for (int i = 0; i < NUM_CUBES; i++) {
-				if (cube.cubes[i].colorFor(*this) != color) return true;
+		bool is(const vec3& color, RubiksCube& rCube) const {
+			for (auto& cube : rCube.cubes) {
+				if (contains(cube) && cube.colorFor(*this) != color) return false;
 			}
-			return false;
+			return true;
 		}
 
 		Cube& center(RubiksCube& cube) const {
@@ -258,6 +307,22 @@ namespace rubiks {
 		return nullptr;
 	}
 
+	bool noFilter(const Face* f) { 
+		return true;  
+	};
+
+	vector<const Face*> facesFor(Cube& cube, function<bool(const Face*)> filter = noFilter) {
+		vector<vec3> fDirs = cube.faces();
+		vector<const Face*> faces;
+		for (auto dir : fDirs) {
+			auto f = faceFor(dir);
+			if (filter(f)) {
+				faces.push_back(f);
+			}
+		}
+		return faces;
+	}
+
 	bool RubiksCube::isSolved() {
 		return all_of(begin(faces)+1, end(faces)-1, [&](const Face& face) {
 			vector<reference_wrapper<Cube>> cs = face.get(*this);
@@ -271,16 +336,45 @@ namespace rubiks {
 
 		vector<reference_wrapper<Cube>> layer = getLayer(id);
 		bool sidesSolved = all_of(begin(sides), end(sides), [&](const Face& face) {
-			vector<reference_wrapper<Cube>> cs = face.get(cs);
+			vector<reference_wrapper<Cube>> cs = face.get(layer);
 			vec3 color = cs.front().get().colorFor(face);
 			return all_of(cs.begin() + 1, cs.end(), [&](Cube& c) { return c.colorFor(face) == color; });
 		});
 
-		if (sidesSolved && id == LAYER_TWO) return true;
+		if (id == LAYER_TWO) return sidesSolved;
 
-		const Face face = id == LAYER_ONE ? BACK_FACE : FRONT_FACE;
+		const Face face = id == LAYER_ONE ? DOWN_FACE : UP_FACE;
 		vec3 color = face.get(layer).front().get().colorFor(face);
 		return face.is(color, *this);
+	}
+
+	bool RubiksCube::isInPlace(Cube& cube, bool strict) {
+		if (cube.type == CENTER) return true;
+		if (strict) {
+			auto face = faceFor(cube.fx);
+			if (face && face->center(*this).zc != cube.xc) return false;
+			face = faceFor(cube.fy);
+			if (face && face->center(*this).zc != cube.yc) return false;
+			face = faceFor(cube.fz);
+			if (face && face->center(*this).zc != cube.zc) return false;
+		}
+		else {
+			auto filter = [&](const Face* f) { return f != nullptr && f != &DOWN_FACE && f != &UP_FACE; };
+			vector<const Face*> faces = facesFor(cube, filter);
+
+			vector<vec3> colors = cube.colors();
+			auto no_white = remove_if(begin(colors), end(colors), [](vec3 c) { return c == WHITE || c == YELLOW; });
+			vector<vec3>  centers(faces.size());
+			std::transform(faces.begin(), faces.end(), centers.begin(), [&](const Face* face) {
+				return face->center(*this).zc;
+			});
+			return all_of(colors.begin(), no_white, [&](vec3 color) {
+				return any_of(centers.begin(), centers.end(), [&](vec3 center) {
+					return center == color;
+				});
+			});
+		}
+		return true;
 	}
 
 	function<bool(Cube&, Cube&)> compareBy(const vec3& color) {
