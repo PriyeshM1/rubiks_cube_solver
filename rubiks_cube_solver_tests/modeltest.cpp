@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #define GLM_SWIZZLE 
-#define DEBUG
+//#define DEBUG
 
 #include <algorithm>
 #include <iterator>
@@ -132,7 +132,8 @@ namespace rubiks_cube_solver_tests
 			};
 			bool failed = false;
 			chrono::seconds timeout{ 10 };
-			for (int i = 0; i < 50000; i++) {
+			int iterations = 1000;
+			for (int i = 0; i < iterations; i++) {
 				scramble(cube);
 				copy = cube;
 				future<queue<Move*>> f = async(launch::async, run);
@@ -150,81 +151,84 @@ namespace rubiks_cube_solver_tests
 			}
 			
 			Assert::IsFalse(failed, L"solver was unable to solve the cube");
+			auto msg = "solver solved " + to_string(iterations) + " permutations of cube";
+			Logger::WriteMessage(msg.c_str());
+
 		}
 
-		TEST_METHOD(AdjacentSwapDictectedInsteadOfDiagonalSwap) {
-			RubiksCube cube;
-			load(cube);
+		//TEST_METHOD(AdjacentSwapDictectedInsteadOfDiagonalSwap) {
+		//	RubiksCube cube;
+		//	load(cube);
 
-			auto findOutOfPlace = [&](vector<reference_wrapper<Cube>>& corners) {
-				return filter(corners, [&](Cube& c) { return !cube.isInPlace(c, false); });
-			};
+		//	auto findOutOfPlace = [&](vector<reference_wrapper<Cube>>& corners) {
+		//		return filter(corners, [&](Cube& c) { return !cube.isInPlace(c, false); });
+		//	};
 
-			auto isAdjacentSwap = [&](vector<reference_wrapper<Cube>>& corners) {
-				auto res = findOutOfPlace(corners);
-				vector<vec3> faces0 = filter(res[0].get().faces(), [](vec3 v) { return faceFor(v) != &UP_FACE; });
-				vector<vec3> faces1 = filter(res[1].get().faces(), [](vec3 v) { return faceFor(v) != &UP_FACE; });
-				return any_of(faces0.begin(), faces0.end(), [&](vec3 dir0) {
-					return any_of(faces1.begin(), faces1.end(), [&](vec3 dir1) {
-						return dir0 == dir1;
-					});
-				});
-			};
-			
-			auto inPlace = [&](vector<reference_wrapper<Cube>>& corners, bool strict = false) {
-				int count = count_if(corners.begin(), corners.end(), [&](Cube& c) { return cube.isInPlace(c, strict); });
-				return count;
-			};
+		//	auto isAdjacentSwap = [&](vector<reference_wrapper<Cube>>& corners) {
+		//		auto res = findOutOfPlace(corners);
+		//		vector<vec3> faces0 = filter(res[0].get().faces(), [](vec3 v) { return faceFor(v) != &UP_FACE; });
+		//		vector<vec3> faces1 = filter(res[1].get().faces(), [](vec3 v) { return faceFor(v) != &UP_FACE; });
+		//		return any_of(faces0.begin(), faces0.end(), [&](vec3 dir0) {
+		//			return any_of(faces1.begin(), faces1.end(), [&](vec3 dir1) {
+		//				return dir0 == dir1;
+		//			});
+		//		});
+		//	};
+		//	
+		//	auto inPlace = [&](vector<reference_wrapper<Cube>>& corners, bool strict = false) {
+		//		int count = count_if(corners.begin(), corners.end(), [&](Cube& c) { return cube.isInPlace(c, strict); });
+		//		return count;
+		//	};
 
-			auto corners = cube.cornersAround(cube.center(YELLOW));
+		//	auto corners = cube.cornersAround(cube.center(YELLOW));
 
-			Assert::IsFalse(cube.isSolved(), L"Cube should not be solved");
-			Cube& c0 = cube.cubeAt({ 1, 1, 1 });
-			Assert::IsFalse(cube.isInPlace(c0, false), L"c0 should be out of place");
+		//	Assert::IsFalse(cube.isSolved(), L"Cube should not be solved");
+		//	Cube& c0 = cube.cubeAt({ 1, 1, 1 });
+		//	Assert::IsFalse(cube.isInPlace(c0, false), L"c0 should be out of place");
 
-			Cube& c1 = cube.cubeAt({ 1, 1, -1 });
-			Assert::IsTrue(cube.isInPlace(c1, false), L"c1 should be in place");
+		//	Cube& c1 = cube.cubeAt({ 1, 1, -1 });
+		//	Assert::IsTrue(cube.isInPlace(c1, false), L"c1 should be in place");
 
-			Cube& c2 = cube.cubeAt({ -1, 1, -1 });
-			Assert::IsFalse(cube.isInPlace(c2, false), L"c2 should be out of place");
+		//	Cube& c2 = cube.cubeAt({ -1, 1, -1 });
+		//	Assert::IsFalse(cube.isInPlace(c2, false), L"c2 should be out of place");
 
-			Cube& c3 = cube.cubeAt({ -1, 1, 1 });
-			Assert::IsTrue(cube.isInPlace(c1, false), L"c3 should be in place");
+		//	Cube& c3 = cube.cubeAt({ -1, 1, 1 });
+		//	Assert::IsTrue(cube.isInPlace(c1, false), L"c3 should be in place");
 
-			auto res = findOutOfPlace(corners);
-			Assert::IsTrue(res.size() == 2, L"There should be 2 cubes out of place");
+		//	auto res = findOutOfPlace(corners);
+		//	Assert::IsTrue(res.size() == 2, L"There should be 2 cubes out of place");
 
-			Assert::IsFalse(cube.isInPlace(res[0]), L"out of place cube expected");
-			Assert::IsFalse(cube.isInPlace(res[1]), L"out of place cube expected");
+		//	Assert::IsFalse(cube.isInPlace(res[0]), L"out of place cube expected");
+		//	Assert::IsFalse(cube.isInPlace(res[1]), L"out of place cube expected");
 
-			Assert::IsTrue(res[0].get().pos == c0.pos || res[0].get().pos == c2.pos, L"out of place should match expected");
-			Assert::IsTrue(res[1].get().pos == c0.pos || res[1].get().pos == c2.pos, L"out of place should match expected");
+		//	Assert::IsTrue(res[0].get().pos == c0.pos || res[0].get().pos == c2.pos, L"out of place should match expected");
+		//	Assert::IsTrue(res[1].get().pos == c0.pos || res[1].get().pos == c2.pos, L"out of place should match expected");
 
-			Assert::IsFalse(isAdjacentSwap(corners), L"pattern should not be adjacent swap");
+		//	Assert::IsFalse(isAdjacentSwap(corners), L"pattern should not be adjacent swap");
 
-			auto swapAdjacentCorners = [&]() {
-				for (int i = 0; i < 3; i++) {
-					R.applyTo(cube);
-					U.applyTo(cube);
-					_R.applyTo(cube);
-					_U.applyTo(cube);
+		//	auto swapAdjacentCorners = [&]() {
+		//		for (int i = 0; i < 3; i++) {
+		//			R.applyTo(cube);
+		//			U.applyTo(cube);
+		//			_R.applyTo(cube);
+		//			_U.applyTo(cube);
 
-				}
+		//		}
 
-				SPIN_RIGHT.applyTo(cube);
+		//		SPIN_RIGHT.applyTo(cube);
 
-				for (int i = 0; i < 3; i++) {
-					_L.applyTo(cube);
-					_U.applyTo(cube);
-					L.applyTo(cube);
-					U.applyTo(cube);
-				}
-			};
-			swapAdjacentCorners();
-			while (inPlace(corners) < 2) {
-				U.applyTo(cube);
-			}
-			Assert::IsTrue(isAdjacentSwap(corners), L"pattern should not be adjacent swap");
-		}
+		//		for (int i = 0; i < 3; i++) {
+		//			_L.applyTo(cube);
+		//			_U.applyTo(cube);
+		//			L.applyTo(cube);
+		//			U.applyTo(cube);
+		//		}
+		//	};
+		//	swapAdjacentCorners();
+		//	while (inPlace(corners) < 2) {
+		//		U.applyTo(cube);
+		//	}
+		//	Assert::IsTrue(isAdjacentSwap(corners), L"pattern should not be adjacent swap");
+		//}
 	};
 }

@@ -10,6 +10,7 @@
 #include "model.h"
 #include "util.h"
 #include <iterator>
+#include <functional>
 
 ostream& operator<< (ostream& out, const vec3 v) {
 	out << v.x << ' ' << v.y << ' ' << v.z << ' ';
@@ -17,7 +18,7 @@ ostream& operator<< (ostream& out, const vec3 v) {
 }
 
 namespace rubiks {
-
+	using namespace std::placeholders;
 	using namespace glm;
 
 	struct Rotation {
@@ -48,7 +49,7 @@ namespace rubiks {
 		const string name;
 	};
 
-	class FaceMove : public Move{
+	class FaceMove : public Move {
 	public:
 		FaceMove(const Face& f, const float ra, const string n) :face(f), Move(n, { f.direction, ra }) {}
 
@@ -86,7 +87,7 @@ namespace rubiks {
 
 	class DoubleFaceMove : public FaceMove {
 	public:
-		DoubleFaceMove(const Face& f,  const float ra, const string n) :FaceMove(f, ra, n) {}
+		DoubleFaceMove(const Face& f, const float ra, const string n) :FaceMove(f, ra, n) {}
 
 		virtual void applyTo(RubiksCube& rCube) override {
 			mat4 m = rotate(mat4(1), radians(rotation.amout), rotation.axis);
@@ -131,7 +132,7 @@ namespace rubiks {
 
 	};
 
-	class Spin : public Move{
+	class Spin : public Move {
 	public:
 		Spin(const Rotation r, const string n) :Move(n, r) {}
 
@@ -193,10 +194,26 @@ namespace rubiks {
 	static Spin SPIN_UP = Spin({ { 1, 0, 0 }, -90.f }, "spin up");
 	static Spin SPIN_DOWN = Spin({ { 1, 0, 0 }, 90.f }, "spin down");
 
-	static Move* RArg[4] = { &R, &U, &_R, &_U };
-	static Move* LArg[4] = { &_L, &_U, &L, &U };
+	static vector<Move*> RArg{ &R, &U, &_R, &_U };
+	static vector<Move*> LArg{ &_L, &_U, &L, &U };
 
-	
+	void apply(vector<Move*> moves, RubiksCube& cube, queue<Move*>& appliedMoves, int iterations) {
+		for (int i = 0; i < iterations; i++) {
+			for_each(moves.begin(), moves.end(), [&](Move* m) {
+				m->applyTo(cube);
+				appliedMoves.push(m);
+			});
+		}
+	}
+
+	void add(vector<Move*> moves, queue<Move*>& movesOut) {
+		foreach(moves, [&](Move* m) { movesOut.push(m); });
+	}
+
+	auto R_U_RI_UI = bind(apply, RArg, _1, _2, _3);
+	auto LI_UI_L_U = bind(apply, LArg, _1, _2, _3);
+
+
 	static Move* allMoves[22] = {
 		&F, &R, &B, &L, &U, &D, &_F, &_R, &_B, &_L, &_U, &_D, &SPIN_LEFT, &SPIN_RIGHT, &SPIN_UP, &SPIN_DOWN,
 		&f, &r, &b, &l, &u, &d
@@ -222,7 +239,7 @@ namespace rubiks {
 	}
 
 	void scramble(RubiksCube& cube) {
-		auto moves = scramble(50);
+		auto moves = scramble(20);
 		do {
 			Move& m = *moves.front();
 			moves.pop();
@@ -230,9 +247,33 @@ namespace rubiks {
 		} while (!moves.empty());
 	}
 
+
+	bool isSuperFlip(RubiksCube& cube) {
+		bool allInPlaceNonStrict = all_of(begin(cube.cubes), end(cube.cubes), [&](Cube& c) {
+			return cube.isInPlace(c, false);
+		});
+		if (allInPlaceNonStrict) {
+			return all_of(begin(ALL_COLORS), end(ALL_COLORS), [&](vec3 color) {
+				auto center = cube.center(color);
+				auto edges = cube.edgesAround(center);
+				return forall(edges, [&](Cube& c) { return center.zc != c.colorFor(*faceFor(center.fz)); });
+			});
+		}
+		else {
+			return false;
+		}
+	}
+
+	queue<Move*> superFlip() {
+		queue<Move*> moves;
+		add({ &U, &R, &R, &F, &B, &R, &B, &B, &R, &U, &U, &L, &B, &B,
+		&R, &_U, &_D, &R, &R, &F, &_R, &L, &B, &B, &U, &U, &F, &F}, moves);
+		return moves;
+	}
+
 	bool cached(Move* move) {
-		return any_of(begin(allMoves), end(allMoves), [&](Move* m) { 
-			return move == m; 
+		return any_of(begin(allMoves), end(allMoves), [&](Move* m) {
+			return move == m;
 		});
 	}
 

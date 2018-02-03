@@ -7,7 +7,7 @@
 #include <string>
 #include <algorithm>
 #include <initializer_list>
-
+#include "util.h"
 using namespace std;
 using namespace glm;
 
@@ -38,6 +38,8 @@ namespace rubiks {
 	const vec3 WHITE = { 1, 1, 1 };
 	const vec3 YELLOW = { 1, 1, 0};
 	const vec3 ORANGE = {0.9, 0.4, 0.2};
+
+	vector<vec3> ALL_COLORS{ RED, GREEN, BLUE, WHITE, YELLOW, ORANGE };
 
 	struct Cube {
 		vec3 pos;
@@ -258,6 +260,16 @@ namespace rubiks {
 		Cube& center(RubiksCube& cube) const {
 			return cube.find([&](Cube& c) { return c.type == CENTER && isIn(c.fz); }).front().get();
 		}
+
+		vec3 color(RubiksCube& cube) const {
+			return center(cube).zc;
+		}
+
+		bool isSolved(RubiksCube& cube) const {
+			vec3 faceColor = color(cube);
+			auto cubes = get(cube);
+			return forall(cubes, [&](Cube& c) { return c.colorFor(*this) == faceColor; });
+		}
 	};
 
 	vec3 Cube::colorFor(const Face& face) const{
@@ -281,8 +293,8 @@ namespace rubiks {
 	const Face BACK_FACE{ { 0, 0, -1 } };
 
 
-	const Face faces[6] = { UP_FACE, RIGHT_FACE, LEFT_FACE, FRONT_FACE, BACK_FACE, DOWN_FACE };
-	const Face sides[4] = { RIGHT_FACE, LEFT_FACE, FRONT_FACE, BACK_FACE };
+	vector<const Face*> faces{ &UP_FACE, &RIGHT_FACE, &LEFT_FACE, &FRONT_FACE, &BACK_FACE, &DOWN_FACE };
+	vector<const Face*> sides{ &RIGHT_FACE, &LEFT_FACE, &FRONT_FACE, &BACK_FACE };
 
 	const Face* faceFor(vec3 direction) {
 		if (RIGHT_FACE.direction == direction) {
@@ -324,10 +336,10 @@ namespace rubiks {
 	}
 
 	bool RubiksCube::isSolved() {
-		return all_of(begin(faces)+1, end(faces)-1, [&](const Face& face) {
-			vector<reference_wrapper<Cube>> cs = face.get(*this);
-			vec3 color = cs.front().get().colorFor(face);
-			return all_of(cs.begin() + 1, cs.end(), [&](Cube& c) { return c.colorFor(face) == color; });
+		return all_of(begin(faces)+1, end(faces)-1, [&](const Face* face) {
+			vector<reference_wrapper<Cube>> cs = face->get(*this);
+			vec3 color = cs.front().get().colorFor(*face);
+			return all_of(cs.begin() + 1, cs.end(), [&](Cube& c) { return c.colorFor(*face) == color; });
 		});
 	}
 
@@ -335,17 +347,11 @@ namespace rubiks {
 		assert(id >= LAYER_ONE && id <= LAYER_THREE);
 
 		vector<reference_wrapper<Cube>> layer = getLayer(id);
-		bool sidesSolved = all_of(begin(sides), end(sides), [&](const Face& face) {
-			vector<reference_wrapper<Cube>> cs = face.get(layer);
-			vec3 color = cs.front().get().colorFor(face);
-			return all_of(cs.begin() + 1, cs.end(), [&](Cube& c) { return c.colorFor(face) == color; });
+		return all_of(begin(sides), end(sides), [&](const Face* face) {
+			vector<reference_wrapper<Cube>> cs = (*face).get(layer);
+			vec3 color = face->center(*this).zc;
+			return all_of(cs.begin(), cs.end(), [&](Cube& c) { return c.colorFor(*face) == color; });
 		});
-
-		if (id == LAYER_TWO) return sidesSolved;
-
-		const Face face = id == LAYER_ONE ? DOWN_FACE : UP_FACE;
-		vec3 color = face.get(layer).front().get().colorFor(face);
-		return face.is(color, *this);
 	}
 
 	bool RubiksCube::isInPlace(Cube& cube, bool strict) {

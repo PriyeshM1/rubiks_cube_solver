@@ -22,15 +22,26 @@ public:
 
 	virtual void init() override {
 		initCube();
+		initLights();
+		plane = new Plane(10, 10, 1, 1, true);
 		using namespace rubiks;
 
 		solver = new SimpleSolver;
-	//	moves = solver->solve(rubiksCube);
-		//moves = scramble(20);
 
 		cam.view = glm::lookAt(vec3(3.0f, 3.25f, 3.25f), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 		nextMove();
 		glClearColor(0.5, 0.5, 0.5, 1);
+	}
+
+	void initLights() {
+		light[0].position = vec4(0, 0, 3, 1);
+		light[1].position = vec4(0, 3, 0, 1);
+		light[2].position = vec4(3, 0, 0, 1);
+		light[3].position = vec4(0, 0, -3, 1);
+		light[4].position = vec4(0, -3, 0, 1);
+		light[5].position = vec4(-3, 0, 0, 1);
+
+		for (int i = 1; i < 6; i++) light[i].on = true;
 	}
 
 	void initCube() {
@@ -52,6 +63,9 @@ public:
 			using namespace rubiks;
 			mat4 model;
 			s.sendUniformLight("light[0]", light[0]);
+			//s.sendComputed(cam);
+			//cubes[0][1]->draw(s);
+			//plane->draw(s);
 			for (int i = 0; i < NUM_CUBES; i++) {
 				auto cube = rubiksCube.cubes[i]; 
 				if (move != nullptr && move->affects(cube)) {
@@ -209,6 +223,7 @@ public:
 				moves.push(&_B);
 				break;
 			case 's':
+				//scram = superFlip();
 				scram = scramble(50);
 				while (!scram.empty()) {
 					moves.push(scram.front());
@@ -262,4 +277,5 @@ private:
 	float speed = 300;
 	bool scrambling = false;
 	rubiks::Solver* solver;
+	Plane* plane;
 };

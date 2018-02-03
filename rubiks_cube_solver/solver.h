@@ -60,18 +60,9 @@ namespace rubiks {
 				return all_of(edges.begin(), edges.end(), [&](Cube& c) { return c.colorFor(*faceFor(yellowCenter.fz)) == WHITE; });
 			};
 
+
 			// also check if white cross formed and exit early
 			if (cube.isSolved()) return true;
-			if (whiteCrossFormed(cube)) {
-				steps.push(whiteCorners);
-				return true;
-			}
-			if (daisyFormed()) {
-				steps.push(whiteCross);
-				return true;
-			}
-
-			cout << "executing daisy" << endl;
 
 			// TODO rotate yellow center face to the top
 			if (!UP_FACE.contains(cube.center(YELLOW))) {
@@ -89,6 +80,17 @@ namespace rubiks {
 				moves.push(move);
 			}
 
+
+			if (whiteCrossFormed(cube)) {
+				steps.push(whiteCorners);
+				return true;
+			}
+			if (daisyFormed()) {
+				steps.push(whiteCross);
+				return true;
+			}
+
+			cout << "executing daisy" << endl;
 
 			auto edges = cube.find([](Cube& c) {
 				return (c.yc == WHITE || c.zc == WHITE) && c.type == EDGE && faceFor(c.directionOf(WHITE)) != &UP_FACE;
@@ -297,15 +299,7 @@ namespace rubiks {
 				}
 
 				if (DOWN_FACE.contains(corner)) {	// flip corner to up face
-					R.applyTo(cube);
-					U.applyTo(cube);
-					_R.applyTo(cube);
-					_U.applyTo(cube);
-
-					moves.push(&R);
-					moves.push(&U);
-					moves.push(&_R);
-					moves.push(&_U);
+					R_U_RI_UI(cube, moves, 1);
 				}
 
 
@@ -316,15 +310,7 @@ namespace rubiks {
 
 				
 				while (!cube.isInPlace(corner)) {
-					R.applyTo(cube);
-					U.applyTo(cube);
-					_R.applyTo(cube);
-					_U.applyTo(cube);
-
-					moves.push(&R);
-					moves.push(&U);
-					moves.push(&_R);
-					moves.push(&_U);
+					R_U_RI_UI(cube, moves, 1);
 
 				} 
 
@@ -606,13 +592,19 @@ namespace rubiks {
 				const Cube& center = cube.center(YELLOW);
 				auto corners = cube.cornersAround(center);
 				return all_of(corners.begin(), corners.end(), [&](Cube& c) { 
+					vector<vec3> colors = c.colors();
+					vector<vec3> faces = c.faces();
+					for (int i = 0; i < colors.size(); i++) {
+						if (faceFor(faces[i])->center(cube).zc != colors[i]) return false;
+					}
+
 					return c.colorFor(*faceFor(center.fz)) == YELLOW;
 				});
 			};
 
 			if (cube.isSolved()) return true;
 			if (yellowCornersFormed()) {
-				// TODO next step
+				steps.push(solveLayer3);
 				return true;
 			}
 
@@ -742,15 +734,7 @@ namespace rubiks {
 				}
 
 				while (faceFor(corner.directionOf(YELLOW)) != &DOWN_FACE) {
-					R.applyTo(cube);
-					U.applyTo(cube);
-					_R.applyTo(cube);
-					_U.applyTo(cube);
-
-					moves.push(&R);
-					moves.push(&U);
-					moves.push(&_R);
-					moves.push(&_U);
+					R_U_RI_UI(cube, moves, 1);
 				}
 			}
 
@@ -775,8 +759,62 @@ namespace rubiks {
 				throw "yellow cross was not formed";
 			}
 #endif
-
+			steps.push(solveLayer3);
 			// TODO next step
+			return true;
+		};
+		
+		Step solveLayer3 = [&](RubiksCube& cube, queue<Move*>& moves) {
+#ifdef DEBUG
+			auto original = cube;
+			save(original);
+
+#endif
+			
+			auto mayBeSolveCube = [&]() {
+				R_U_RI_UI(cube, moves, 1);
+				LI_UI_L_U(cube, moves, 1);
+
+				R_U_RI_UI(cube, moves, 5);
+				LI_UI_L_U(cube, moves, 5);
+			};
+
+			auto applyMovesForWhen1FaceSolved = [&]() {
+				auto& face = *findin(sides, [&](const Face* f) { return f->isSolved(cube); });
+				Cube& center = face.center(cube);
+				while (center.fz != FRONT_FACE.direction) {	// todo implemented == for face
+					SPIN_RIGHT.applyTo(cube);
+					moves.push(&SPIN_RIGHT);
+				}
+
+				mayBeSolveCube();
+				if (!cube.isSolved()) {
+					mayBeSolveCube();
+				}
+			};
+
+			auto anyFaceSolved = [&]() {
+				return exists(sides, [&](const Face* f) { return f->isSolved(cube); });
+			};
+
+			cout << "executing layer 3 solution" << endl;
+			
+			while (!cube.isSolved()) {
+				if (anyFaceSolved()) {
+					applyMovesForWhen1FaceSolved();
+				}
+				else {	// No face solved
+					mayBeSolveCube();
+					applyMovesForWhen1FaceSolved();
+				}
+			}
+
+#ifdef DEBUG
+			if (!cube.isSolved()) {
+				save(original);
+				throw "unable to solve cube";
+			}
+#endif
 
 			return true;
 		};
