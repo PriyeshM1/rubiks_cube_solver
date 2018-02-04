@@ -6,6 +6,7 @@
 #include <queue>
 #include "moves.h"
 #include "solver.h"
+#include "CubePainter.h"
 
 using namespace std;
 using namespace glm;
@@ -21,9 +22,9 @@ public:
 	}
 
 	virtual void init() override {
-		initCube();
+		painter = new CubePainter(rubiksCube);
+		painter->init();
 		initLights();
-		plane = new Plane(10, 10, 1, 1, true);
 		using namespace rubiks;
 
 		solver = new SimpleSolver;
@@ -44,105 +45,14 @@ public:
 		for (int i = 1; i < 6; i++) light[i].on = true;
 	}
 
-	void initCube() {
-		using namespace rubiks;
-		for (int i = 0; i < NUM_CUBES; i++) {
-			cubes[i][0] = new ncl::gl::Cube(1.0f, 10, ncl::gl::BLACK);
-			cubes[i][1] = new ncl::gl::Cube(0.9, 10, vec4(rubiksCube.cubes[i].zc, 1.0));
-			if (rubiksCube.cubes[i].type == EDGE || rubiksCube.cubes[i].type == CORNER) {
-				cubes[i][2] = new ncl::gl::Cube(0.9, 10, vec4(rubiksCube.cubes[i].yc, 1.0));
-			}
-			if (rubiksCube.cubes[i].type == CORNER) {
-				cubes[i][3] = new ncl::gl::Cube(0.9, 10, vec4(rubiksCube.cubes[i].xc, 1.0));
-			}
-		}		
-	}
-
 	virtual void display() override {
 		shader("default")([&](Shader& s) {
-			using namespace rubiks;
 			mat4 model;
 			s.sendUniformLight("light[0]", light[0]);
-			//s.sendComputed(cam);
-			//cubes[0][1]->draw(s);
-			//plane->draw(s);
-			for (int i = 0; i < NUM_CUBES; i++) {
-				auto cube = rubiksCube.cubes[i]; 
-				if (move != nullptr && move->affects(cube)) {
-					model = rotate(mat4(1), radians(angle), move->rotation.axis);
-					mat4& base = translate(model, rubiksCube.cubes[i].pos);
-					cam.model = base;
-					s.sendComputed(cam);
-					cubes[i][0]->draw(s);
-
-					vec3 pos = vec3(0.1);
-					cam.model = translate(base, cube.fz * pos);
-					s.sendComputed(cam);
-					cubes[i][1]->draw(s);
-
-					if (rubiksCube.cubes[i].type == EDGE || rubiksCube.cubes[i].type == CORNER) {
-						cam.model = translate(base, cube.fy * pos);
-						s.sendComputed(cam);
-						cubes[i][2]->draw(s);
-					}
-
-					if (rubiksCube.cubes[i].type == CORNER) {
-						cam.model = translate(base, cube.fx * pos);
-						s.sendComputed(cam);
-						cubes[i][3]->draw(s);
-					}
-				}
-				else {
-					mat4& base = translate(mat4(1), rubiksCube.cubes[i].pos);
-					cam.model = base;
-					s.sendComputed(cam);
-					cubes[i][0]->draw(s);
-
-					vec3 pos = vec3(0.1);
-					cam.model = translate(base, cube.fz * pos);
-					s.sendComputed(cam);
-					cubes[i][1]->draw(s);
-
-					if (rubiksCube.cubes[i].type == EDGE || rubiksCube.cubes[i].type == CORNER) {
-						cam.model = translate(base, cube.fy * pos);
-						s.sendComputed(cam);
-						cubes[i][2]->draw(s);
-					}
-
-					if (rubiksCube.cubes[i].type == CORNER) {
-						cam.model = translate(base, cube.fx * pos);
-						s.sendComputed(cam);
-						cubes[i][3]->draw(s);
-					}
-				}
-			}
+			painter->paint(s, cam, move, angle);
 		});
 	}
 
-	void draw(rubiks::Cube& cube, int i, mat4& model, Shader& s) {
-		using namespace rubiks;
-		cam.model = model;
-		s.sendComputed(cam);
-		cubes[i][0]->draw(s);
-
-		vec3 pos = vec3(0.1);
-		cam.model = translate(model, cube.fz * pos);
-		s.sendComputed(cam);
-		cubes[i][1]->draw(s);
-
-		if (rubiksCube.cubes[i].type == EDGE || rubiksCube.cubes[i].type == CORNER) {
-			cam.model = translate(model, cube.fy * pos);
-			s.sendComputed(cam);
-			cubes[i][2]->draw(s);
-		}
-
-		if (rubiksCube.cubes[i].type == CORNER) {
-			cam.model = translate(model, cube.fx * pos);
-			s.sendComputed(cam);
-			cubes[i][3]->draw(s);
-		}
-	}
-	
 	virtual void resized() override {
 		cam.projection = glm::perspective(glm::radians(60.0f), aspectRatio, 0.3f, 100.0f);
 	}
@@ -277,5 +187,5 @@ private:
 	float speed = 300;
 	bool scrambling = false;
 	rubiks::Solver* solver;
-	Plane* plane;
+	CubePainter* painter;
 };

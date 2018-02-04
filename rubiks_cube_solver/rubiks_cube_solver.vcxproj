@@ -147,6 +147,8 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CubePainter.h" />
+    <ClInclude Include="Header.h" />
     <ClInclude Include="io.h" />
     <ClInclude Include="model.h" />
     <ClInclude Include="moves.h" />
